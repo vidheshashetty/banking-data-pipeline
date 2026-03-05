@@ -1,0 +1,31 @@
+name: clean_transactions_checkpoint
+config_version: 1.0
+
+class_name: Checkpoint
+
+run_name_template: "%Y%m%d-%H%M%S-clean-transactions"
+
+action_list:
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
+
+  - name: update_data_docs
+    action:
+      class_name: UpdateDataDocsAction
+
+validations:
+  - batch_request:
+      datasource_name: snowflake_datasource
+      data_connector_name: default_runtime_data_connector_name
+      data_asset_name: clean_transactions
+      runtime_parameters:
+        query: "SELECT * FROM clean_transactions"
+      batch_identifiers:
+        default_identifier_name: default_id
+
+    expectation_suite_name: clean_transactions_suite
