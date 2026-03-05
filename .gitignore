@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+airflow_venv/
+
+# Airflow
+airflow.db
+logs/
+
+# Great Expectations
+gx/uncommitted/
+
+# OS
+.DS_Store
