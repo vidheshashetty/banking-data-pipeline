@@ -1,27 +1,33 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
+  pull_request:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Setup Python
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: |
+        pip install pyspark pandas great_expectations
 
-    - name: Lint check
-      run: echo "Linting passed"
+    - name: Lint check (basic)
+      run: |
+        python -m py_compile load_raw_data.py
+        python -m py_compile pyspark_job.py
+        python -m py_compile validate_and_log.py
+        python -m py_compile mark_processed.py
 
-    - name: Deploy DAGs (simulation)
-      run: echo "Deploying Airflow DAGs..."
+    - name: Dummy test (pass always)
+      run: echo "CI Passed"
