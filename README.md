@@ -4,11 +4,13 @@
 
 This project simulates an end-to-end banking transaction data pipeline built using modern data engineering tools.
 
-The pipeline generates synthetic banking transactions, ingests them into Snowflake, performs data validation and transformation, and orchestrates the workflow using Apache Airflow.
+The pipeline generates synthetic banking transactions, stores raw data in Amazon S3 (data lake), processes data using PySpark on AWS Glue, performs data validation and transformation, and loads curated data into Snowflake for analytics.
 
-Data quality checks are implemented using both SQL validation logic and Great Expectations.
+Workflow orchestration is handled using Apache Airflow, and data quality checks are implemented using both SQL validation logic and Great Expectations.
 
-The project demonstrates how a production-style ETL pipeline can be designed with data validation, observability, and workflow orchestration.
+A basic CI/CD pipeline using GitHub Actions is integrated to automate deployment of workflows and pipeline components.
+
+The project demonstrates how a production-grade ETL pipeline can be designed with data validation, scalability, observability, and cloud-native architecture.
 
 ---
 
@@ -17,11 +19,14 @@ The project demonstrates how a production-style ETL pipeline can be designed wit
 The pipeline architecture consists of the following components:
 
 1. Synthetic Data Generation
-2. Snowflake Data Warehouse
-3. Data Validation Layer
-4. Workflow Orchestration (Airflow)
-5. Data Quality Framework (Great Expectations)
-6. Pipeline Monitoring and Logging
+2. Amazon S3 (Raw Data Layer)
+3. AWS Glue (PySpark Processing Layer)
+4. Amazon S3 (Processed Data Layer)
+5. Snowflake (Curated Data Warehouse)
+6. Data Validation Layer
+7. Workflow Orchestration (Apache Airflow)
+8. CI/CD Pipeline (GitHub Actions)
+9. Monitoring & Logging (AWS CloudWatch + Airflow)
 
 Architecture Diagram:
 
@@ -41,27 +46,33 @@ Main DAG Tasks:
 
 1. **load_raw**
    - Generates synthetic banking transaction data
-   - Inserts records into RAW_TRANSACTIONS table
+   - Stores raw transaction data in Amazon S3 (raw zone)
 
 2. **clean_data**
-   - Removes duplicates using ROW_NUMBER
-   - Filters valid transactions
-   - Loads clean data into CLEAN_TRANSACTIONS table
+   - Triggers AWS Glue PySpark job
+   - Performs:
+      - Data cleaning
+      - Deduplication using window functions
+      - Transformation and filtering
+      - Writes processed data to S3 (processed zone)
 
 3. **move_failed**
-   - Moves invalid records to FAILED_TRANSACTIONS table
+   - Identifies invalid records
+   - Stores failed records in S3 (failed zone) for debugging
 
 4. **validate_and_log**
    - Calculates validation metrics
-   - Logs pipeline execution statistics
+   - Logs pipeline execution statistics into Snowflake (PIPELINE_RUN_LOG)
+   - Sends logs to AWS CloudWatch
    - Determines pipeline health status
 
 5. **gx_checkpoint**
    - Executes Great Expectations validation
-   - Logs validation results
+   - Validates processed data from S3/Snowflake
+   - Generates data quality reports
 
 6. **mark_processed**
-   - Marks processed records in RAW table
+   - Marks processed records to maintain pipeline consistency
 
 ---
 
@@ -78,13 +89,13 @@ Rules applied:
 - Transaction type must be DEBIT or CREDIT
 - Transaction timestamp cannot be in the future
 
-Invalid records are moved to the FAILED_TRANSACTIONS table.
+Invalid records are moved to the failed data layer (S3).
 
 ---
 
 ### Great Expectations Validation
 
-Great Expectations is used to perform additional data validation checks on the CLEAN_TRANSACTIONS table.
+Great Expectations is used to perform additional validation on processed datasets.
 
 It provides:
 
@@ -92,18 +103,17 @@ It provides:
 - Data validation reports
 - Data quality monitoring
 
-Validation is executed through a GX checkpoint.
+Validation is executed via a GX checkpoint after PySpark processing.
 
 ---
 
 ## Pipeline Monitoring
 
-Pipeline execution metrics are stored in the table:
+Pipeline execution metrics are stored in:
 
-PIPELINE_RUN_LOG
+PIPELINE_RUN_LOG (Snowflake)
 
 Metrics captured:
-
 - Total records processed
 - Passed records
 - Failed records
@@ -112,6 +122,10 @@ Metrics captured:
 - Execution time
 - Great Expectations validation status
 
+Monitoring Tools:
+- AWS CloudWatch for Glue job logs
+- Airflow logs for orchestration tracking
+
 Email alerts are configured for pipeline failures.
 
 ---
@@ -119,10 +133,14 @@ Email alerts are configured for pipeline failures.
 ## Technologies Used
 
 - Python
+- PySpark
 - Apache Airflow
+- AWS S3
+- AWS Glue
 - Snowflake
 - Great Expectations
 - SQL
+- GitHub Actions (CI/CD)
 - Linux
 
 ---
@@ -134,10 +152,17 @@ banking-data-pipeline/
 ├── dags/
 │   └── banking_pipeline_dag.py
 │
+├── glue_jobs/
+│   └── pyspark_job.py
+│
 ├── gx/
 │   ├── great_expectations.yml
 │   ├── expectations/
 │   ├── checkpoints/
+│
+├── .github/
+│   └── workflows/
+│       └── ci_cd_pipeline.yml
 │
 ├── diagrams/
 │   ├── architecture_diagram.png
@@ -152,9 +177,10 @@ banking-data-pipeline/
 ## Key Features
 
 - End-to-End Data Pipeline
+- Data Lake Architecture using S3
+- Distributed Data Processing using PySpark
 - Airflow DAG Orchestration
-- Data Validation Layer
-- Great Expectations Integration
-- Failure Threshold Monitoring
+- Data Validation Layer (SQL + Great Expectations)
+- Failure Handling & Monitoring
 - Pipeline Execution Logging
-- Automated Data Quality Checks
+- CI/CD Pipeline Integration
